@@ -46,4 +46,28 @@ class UserController extends Controller
             'message' => 'Akun berhasil terdaftar'
         ], 201);
     }
+
+    public function login(Request $request)
+    {
+        // validasi request
+        $request->validate([
+            'email' => 'required|string|email|max:255',
+            'password' => 'required|string|min:8',
+        ]);
+
+        // check email and password
+        if (auth()->attempt(['email' => $request->email, 'password' => $request->password])) {
+            $user = auth()->user();
+            $token = $user->createToken('auth_token')->plainTextToken;
+
+            return response()->json([
+                'message' => 'Login berhasil',
+                'token' => $token,
+            ], 200);
+        }
+
+        return response()->json([
+            'message' => 'Email atau password salah'
+        ], 401);
+    }
 }
