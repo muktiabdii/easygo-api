@@ -1,10 +1,13 @@
 <?php
 
+use App\Http\Controllers\UserController;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-use App\Http\Controllers\PlaceController;
-use App\Http\Controllers\FacilityController;
 
-// Places
-Route::get('/places', [PlaceController::class, 'index']);
-Route::post('/places', [PlaceController::class, 'store']);
-Route::get('/places/{id}', [PlaceController::class, 'show']);
+Route::prefix('auth')->controller(UserController::class)->group(function () {
+    Route::post('/register', 'register');
+    Route::post('/login', 'login')->middleware('throttle:login');
+    Route::post('/password/forgot', 'sendResetLinkEmail');
+    Route::post('/password/validate-otp', 'validateOtp');
+    Route::post('/password/reset', 'resetPassword');
+});
