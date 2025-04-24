@@ -5,11 +5,19 @@ namespace App\Http\Controllers;
 use App\Models\Place;
 use App\Models\PlaceImage;
 use App\Models\Facility;
+use App\Services\DropboxService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PlaceController extends Controller
 {
+    protected $dropboxService;
+
+    public function __construct(DropboxService $dropboxService)
+    {
+        $this->dropboxService = $dropboxService;
+    }
+
     /**
      * Store a newly created place in storage.
      *
@@ -25,13 +33,12 @@ class PlaceController extends Controller
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'facilities' => 'nullable|json', // Validasi sebagai JSON string
+            'facilities' => 'nullable|json', 
         ]);
     
         DB::beginTransaction();
         
         try {
-            // Create the place - without rating field
             $place = Place::create([
                 'name' => $validated['name'],
                 'address' => $validated['address'],
@@ -40,24 +47,28 @@ class PlaceController extends Controller
                 'longitude' => $validated['longitude'],
             ]);
             
-            // Handle image upload if present
             if ($request->hasFile('image')) {
-                $imagePath = $request->file('image')->store('place-images', 'public');
+                // Upload to Dropbox and get the URL
+                $dropboxUrl = $this->dropboxService->uploadFile($request->file('image'));
                 
-                PlaceImage::create([
-                    'place_id' => $place->id,
-                    'image' => $imagePath
-                ]);
+                if ($dropboxUrl) {
+                    // Store the Dropbox URL in the database
+                    PlaceImage::create([
+                        'place_id' => $place->id,
+                        'image' => $dropboxUrl  
+                    ]);
+                } else {
+                    return response()->json(['error' => 'Image upload to Dropbox failed'], 500);
+                }
             }
             
-            // Handle facilities if present
             if ($request->has('facilities')) {
-                $facilityIds = json_decode($validated['facilities'], true); // Ubah JSON string menjadi array
+                $facilityIds = json_decode($validated['facilities'], true);
                 if (!empty($facilityIds)) {
                     foreach ($facilityIds as $facilityId) {
-                        $facility = Facility::find($facilityId); // Temukan fasilitas berdasarkan ID
+                        $facility = Facility::find($facilityId);
                         if ($facility) {
-                            $place->facilities()->attach($facility->id); // Lampirkan fasilitas ke tempat
+                            $place->facilities()->attach($facility->id);
                         }
                     }
                 }
@@ -80,11 +91,6 @@ class PlaceController extends Controller
     public function index()
     {
         $places = Place::with(['images', 'facilities'])->get();
-        $places->each(function ($place) {
-            $place->images->each(function ($image) {
-                $image->image_url = asset('storage/' . $image->image); // Tambahkan full URL
-            });
-        });
         return response()->json($places);
     }
 
