@@ -2,8 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
 use App\Models\User;
+use App\Mail\ResetOtpMail;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Password;
+use Illuminate\Support\Facades\Validator;
 
 class UserController extends Controller
 {
@@ -47,6 +51,7 @@ class UserController extends Controller
         ], 201);
     }
 
+    // method login
     public function login(Request $request)
     {
         // validasi request
@@ -70,4 +75,70 @@ class UserController extends Controller
             'message' => 'Email atau password salah'
         ], 401);
     }
+
+    // method send reset link email
+    public function sendResetLinkEmail(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|email|exists:users,email',
+        ]);
+
+        $otp = rand(100000, 999999);
+
+        // Ambil user yang sesuai
+        $user = User::where('email', $request->email)->first();
+
+        // Simpan OTP dan waktu kadaluarsa ke database
+        $user->reset_otp = $otp;
+        $user->otp_expires_at = now()->addMinutes(5);
+        $user->save();
+
+        // Kirim email OTP
+        Mail::to($user->email)->send(new ResetOtpMail($user, $otp));
+
+        return response()->json([
+            'message' => 'OTP reset password telah dikirim ke email kamu.'
+        ]);
+    }
+
+
+    // method validate otp
+    public function validateOtp(Request $request) 
+    {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required'
+        ]);
+    
+        $user = User::where('email', $request->email)->first();
+    
+        if (!$user || $user->reset_otp !== $request->otp || now()->gt($user->otp_expires_at)) {
+            return response()->json(['message' => 'OTP tidak valid atau sudah kedaluwarsa'], 422);
+        }
+    
+        return response()->json(['message' => 'OTP valid']);
+    }
+
+    // method reset password
+    public function resetPassword(Request $request) {
+        $request->validate([
+            'email' => 'required|email',
+            'otp' => 'required',
+            'password' => 'required|confirmed|min:8',
+        ]);
+    
+        $user = User::where('email', $request->email)->first();
+    
+        if (!$user || $user->reset_otp !== $request->otp || now()->gt($user->otp_expires_at)) {
+            return response()->json(['message' => 'OTP tidak valid atau sudah kedaluwarsa'], 422);
+        }
+    
+        $user->password = bcrypt($request->password);
+        $user->reset_otp = null;
+        $user->otp_expires_at = null;
+        $user->save();
+    
+        return response()->json(['message' => 'Password berhasil direset']);
+    }
+      
 }
