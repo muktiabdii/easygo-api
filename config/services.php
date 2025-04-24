@@ -35,4 +35,8 @@ return [
         ],
     ],
 
+    'dropbox' => [
+        'access_token' => env('DROPBOX_ACCESS_TOKEN'),
+    ],
+
 ];
