@@ -26,4 +26,9 @@ class Place extends Model
     {
         return $this->belongsToMany(Facility::class, 'place_facility');
     }
+
+    public function ratings()
+    {
+        return $this->hasMany(Rating::class);
+    }
 }

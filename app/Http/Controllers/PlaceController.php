@@ -24,35 +24,44 @@ class PlaceController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
+    // PlaceController.php
     public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'address' => 'required|string',
-            'description' => 'nullable|string',
+            'comment' => 'nullable|string', // Changed from description to comment
+            'rating' => 'required|integer|min:1|max:5',
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'facilities' => 'nullable|json', 
         ]);
-    
+
         DB::beginTransaction();
         
         try {
+            // Create the place
             $place = Place::create([
                 'name' => $validated['name'],
                 'address' => $validated['address'],
-                'description' => $validated['description'] ?? null,
+                'description' => null, // Keep description null
                 'latitude' => $validated['latitude'],
                 'longitude' => $validated['longitude'],
             ]);
             
+            // Create the rating
+            $rating = $place->ratings()->create([
+                'user_id' => $request->user()->id,
+                'rating' => $validated['rating'],
+                'comment' => $validated['comment'],
+            ]);
+
+            // Handle image upload
             if ($request->hasFile('image')) {
-                // Upload to Dropbox and get the URL
                 $dropboxUrl = $this->dropboxService->uploadFile($request->file('image'));
                 
                 if ($dropboxUrl) {
-                    // Store the Dropbox URL in the database
                     PlaceImage::create([
                         'place_id' => $place->id,
                         'image' => $dropboxUrl  
@@ -62,6 +71,7 @@ class PlaceController extends Controller
                 }
             }
             
+            // Handle facilities
             if ($request->has('facilities')) {
                 $facilityIds = json_decode($validated['facilities'], true);
                 if (!empty($facilityIds)) {
@@ -76,7 +86,10 @@ class PlaceController extends Controller
             
             DB::commit();
             
-            return response()->json($place, 201);
+            return response()->json([
+                'place' => $place,
+                'rating' => $rating
+            ], 201);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['error' => $e->getMessage()], 500);
@@ -88,21 +101,26 @@ class PlaceController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
+// PlaceController.php
     public function index()
     {
-        $places = Place::with(['images', 'facilities'])->get();
+        $places = Place::with(['images', 'facilities', 'ratings'])
+            ->get()
+            ->map(function ($place) {
+                $place->average_rating = $place->ratings->avg('rating');
+                return $place;
+            });
+        
         return response()->json($places);
     }
 
-    /**
-     * Get a specific place
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function show($id)
     {
-        $place = Place::with(['images', 'facilities'])->findOrFail($id);
+        $place = Place::with(['images', 'facilities', 'ratings'])
+            ->findOrFail($id);
+        
+        $place->average_rating = $place->ratings->avg('rating');
+        
         return response()->json($place);
     }
 }
