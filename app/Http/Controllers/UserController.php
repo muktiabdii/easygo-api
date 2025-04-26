@@ -56,8 +56,8 @@ class UserController extends Controller
     {
         // validasi request
         $request->validate([
-            'email' => 'required|string|email|max:255',
-            'password' => 'required|string|min:8',
+            'email' => 'required|string|email',
+            'password' => 'required|string',
         ]);
 
         // check email and password
