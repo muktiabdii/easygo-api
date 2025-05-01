@@ -81,6 +81,8 @@ class UserController extends Controller
     {
         $request->validate([
             'email' => 'required|email|exists:users,email',
+        ], [
+            'email.exists' => 'Email belum terdaftar.'
         ]);
 
         $otp = rand(100000, 999999);
