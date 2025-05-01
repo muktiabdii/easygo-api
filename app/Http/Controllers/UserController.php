@@ -56,8 +56,8 @@ class UserController extends Controller
     {
         // validasi request
         $request->validate([
-            'email' => 'required|string|email|max:255',
-            'password' => 'required|string|min:8',
+            'email' => 'required|string|email',
+            'password' => 'required|string',
         ]);
 
         // check email and password
@@ -81,6 +81,8 @@ class UserController extends Controller
     {
         $request->validate([
             'email' => 'required|email|exists:users,email',
+        ], [
+            'email.exists' => 'Email belum terdaftar.'
         ]);
 
         $otp = rand(100000, 999999);
