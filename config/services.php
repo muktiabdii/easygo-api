@@ -37,6 +37,9 @@ return [
 
     'dropbox' => [
         'access_token' => env('DROPBOX_ACCESS_TOKEN'),
+        'refresh_token' => env('DROPBOX_REFRESH_TOKEN'),
+        'client_id' => env('DROPBOX_CLIENT_ID'),
+        'client_secret' => env('DROPBOX_CLIENT_SECRET'),
     ],
 
 ];
