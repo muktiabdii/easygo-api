@@ -30,7 +30,7 @@ class ResetOtpMail extends Mailable
             view: 'reset_otp_mail',
             with: [
                 'user' => $this->user,
-                'otp' => $this->otp,
+                'otp' => $this->otp
             ],
         );
     }
