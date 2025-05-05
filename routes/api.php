@@ -1,8 +1,8 @@
 <?php
 
-use App\Http\Controllers\UserController;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\ChatController;
+use App\Http\Controllers\UserController;
 use App\Http\Controllers\PlaceController;
 
 Route::prefix('auth')->controller(UserController::class)->group(function () {
@@ -13,14 +13,20 @@ Route::prefix('auth')->controller(UserController::class)->group(function () {
     Route::post('/password/reset', 'resetPassword');
 });
 
-Route::middleware('auth:sanctum')->group(function () {
-    // Protected routes that require authentication
-    Route::prefix('places')->group(function () {
-        Route::post('/', [PlaceController::class, 'store']); 
-    });
-});
-
 Route::prefix('places')->group(function () {
     Route::get('/', [PlaceController::class, 'index']); 
     Route::get('/{id}', [PlaceController::class, 'show']); 
+});
+
+Route::middleware('auth:sanctum')->group(function () {
+    Route::prefix('places')->group(function () {
+        Route::post('/', [PlaceController::class, 'store']);
+    });
+
+    Route::prefix('chat')->group(function () {
+        Route::get('/', [ChatController::class, 'index']);
+        Route::post('/', [ChatController::class, 'createRoom']);
+        Route::get('/{chatRoomId}/messages', [ChatController::class, 'messages']);
+        Route::post('/{chatRoomId}/messages', [ChatController::class, 'sendMessage']);
+    });
 });

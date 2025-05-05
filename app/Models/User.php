@@ -50,4 +50,20 @@ class User extends Authenticatable
             'password' => 'hashed',
         ];
     }
+
+    public function chatRoomsAsUser1()
+    {
+        return $this->hasMany(ChatRoom::class, 'user1_id');
+    }
+
+    public function chatRoomsAsUser2()
+    {
+        return $this->hasMany(ChatRoom::class, 'user2_id');
+    }
+
+    public function messages()
+    {
+        return $this->hasMany(Message::class, 'sender_id');
+    }
+
 }
