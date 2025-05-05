@@ -24,13 +24,20 @@
 
         {{-- OTP Code Display --}}
         <div style="text-align: center; margin: 30px 0;">
-            @foreach(str_split($otp) as $digit)
-                <span style="display: inline-block; font-size: 28px; font-weight: bold; width: 50px; height: 50px; line-height: 50px; border-radius: 10px; background-color: #f3f4f6; color: #111827; margin: 0 6px;">
-                    {{ $digit }}
-                </span>
-            @endforeach
+            <p style="
+                display: inline-block;
+                font-size: 28px;
+                font-weight: bold;
+                letter-spacing: 14px;
+                background-color: #f3f4f6;
+                padding: 12px 18px;
+                border-radius: 10px;
+                color: #111827;
+                user-select: all;
+            ">
+                {{ $otp }}
+            </p>
         </div>
-
 
         {{-- Info --}}
         <p style="color: #6b7280; font-size: 14px;">
