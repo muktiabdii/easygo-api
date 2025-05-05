@@ -34,7 +34,7 @@ class PlaceController extends Controller
             'rating' => 'required|integer|min:1|max:5',
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'image' => 'required|file|mimes:jpeg,png,jpg|max:5120',
             'facilities' => 'nullable|json', 
         ]);
 
