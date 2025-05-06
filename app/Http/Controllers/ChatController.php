@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Message;
 use App\Models\ChatRoom;
+use App\Events\MessageSent;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
@@ -92,13 +93,9 @@ class ChatController extends Controller
             // pengecekan untuk menentukan header tanggal
             if ($createdAt->isToday()) {
                 $dateKey = 'Hari Ini';
-            } 
-            
-            elseif ($createdAt->isYesterday()) {
+            } elseif ($createdAt->isYesterday()) {
                 $dateKey = 'Kemarin';
-            } 
-            
-            else {
+            } else {
                 $dateKey = $createdAt->translatedFormat('l, j F Y'); // contoh: Sabtu, 3 Mei 2025
             }
 
@@ -131,6 +128,9 @@ class ChatController extends Controller
             'sender_id' => Auth::id(),
             'message' => $request->message
         ]);
+
+        // broadcast event ke frontend
+        broadcast(new MessageSent($message));
 
         return response()->json($message);
     }
