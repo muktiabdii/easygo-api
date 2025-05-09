@@ -8,9 +8,13 @@ use App\Http\Controllers\PlaceController;
 Route::prefix('auth')->controller(UserController::class)->group(function () {
     Route::post('/register', 'register');
     Route::post('/login', 'login')->middleware('throttle:login');
+    Route::post('/logout', 'logout');
     Route::post('/password/forgot', 'sendResetLinkEmail');
     Route::post('/password/validate-otp', 'validateOtp');
     Route::post('/password/reset', 'resetPassword');
+    
+    // Token validation route
+    Route::get('/validate-token', 'validateToken')->middleware('auth:sanctum');
 });
 
 Route::middleware('auth:sanctum')->group(function () {

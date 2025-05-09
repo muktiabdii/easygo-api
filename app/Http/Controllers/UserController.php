@@ -6,15 +6,14 @@ use App\Models\User;
 use App\Mail\ResetOtpMail;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Mail;
-use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Cookie;
+use Laravel\Sanctum\PersonalAccessToken;
 
 class UserController extends Controller
 {
-
     // method register
     public function register(Request $request){
-
         // validasi request
         $request->validate([
             'name' => 'required|string|max:255',
@@ -25,7 +24,6 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed|regex:/^(?=.*[a-zA-Z])(?=.*[0-9]).+$/',
         ], [
-            
             // error messages
             'password.regex' => 'Password harus mengandung minimal satu huruf dan satu angka.',
             'password.confirmed' => 'Konfirmasi password tidak cocok.',
@@ -51,7 +49,7 @@ class UserController extends Controller
         ], 201);
     }
 
-    // method login
+    // method login with secure cookies
     public function login(Request $request)
     {
         // validasi request
@@ -64,16 +62,50 @@ class UserController extends Controller
         if (auth()->attempt(['email' => $request->email, 'password' => $request->password])) {
             $user = auth()->user();
             $token = $user->createToken('auth_token')->plainTextToken;
-
+            
+            // Store token in secure HTTP-only cookie
+            $cookie = cookie('auth_token', $token, 60*24, // 1 day
+                       null, null, // path, domain
+                       true,       // secure (HTTPS only)
+                       true,       // httpOnly
+                       false,      // raw
+                       'strict');  // same site policy
+            
             return response()->json([
                 'message' => 'Login berhasil',
-                'token' => $token,
-            ], 200);
+                'token' => $token, // Still include token in response for initial setup
+            ], 200)->withCookie($cookie);
         }
 
         return response()->json([
             'message' => 'Email atau password salah'
         ], 401);
+    }
+    
+    // method logout
+    public function logout(Request $request)
+    {
+        // Revoke the token from the database
+        if ($request->user()) {
+            $request->user()->currentAccessToken()->delete();
+        }
+        
+        // Clear the auth cookie
+        $cookie = Cookie::forget('auth_token');
+        
+        return response()->json([
+            'message' => 'Logged out successfully'
+        ])->withCookie($cookie);
+    }
+    
+    // Token validation endpoint
+    public function validateToken(Request $request)
+    {
+        // User is already authenticated via middleware if they reach here
+        return response()->json([
+            'valid' => true,
+            'user' => $request->user()
+        ]);
     }
 
     // method send reset link email
