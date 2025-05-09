@@ -8,5 +8,5 @@ return [
     'allowed_headers' => ['*'], // Header yang diizinkan
     'exposed_headers' => [], // Header yang diekspos
     'max_age' => 0, // Waktu cache preflight request (dalam detik)
-    'supports_credentials' => false, // Apakah mendukung credentials (cookies, auth headers)
+    'supports_credentials' => true, // Apakah mendukung credentials (cookies, auth headers)
 ];

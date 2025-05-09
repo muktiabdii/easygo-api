@@ -24,18 +24,18 @@ class PlaceController extends Controller
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
-    // PlaceController.php
     public function store(Request $request)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'address' => 'required|string',
-            'comment' => 'nullable|string', // Changed from description to comment
+            'comment' => 'nullable|string',
             'rating' => 'required|integer|min:1|max:5',
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
-            'image' => 'required|file|mimes:jpeg,png,jpg|max:5120',
-            'facilities' => 'nullable|json', 
+            'images' => 'required|array|min:1|max:10',
+            'images.*' => 'file|mimes:jpeg,png,jpg|max:5120',
+            'facilities' => 'nullable|json',
         ]);
 
         DB::beginTransaction();
@@ -45,7 +45,7 @@ class PlaceController extends Controller
             $place = Place::create([
                 'name' => $validated['name'],
                 'address' => $validated['address'],
-                'description' => null, // Keep description null
+                'description' => null,
                 'latitude' => $validated['latitude'],
                 'longitude' => $validated['longitude'],
             ]);
@@ -57,17 +57,19 @@ class PlaceController extends Controller
                 'comment' => $validated['comment'],
             ]);
 
-            // Handle image upload
-            if ($request->hasFile('image')) {
-                $dropboxUrl = $this->dropboxService->uploadFile($request->file('image'));
-                
-                if ($dropboxUrl) {
-                    PlaceImage::create([
-                        'place_id' => $place->id,
-                        'image' => $dropboxUrl  
-                    ]);
-                } else {
-                    return response()->json(['error' => 'Image upload to Dropbox failed'], 500);
+            // Handle multiple images upload
+            if ($request->hasFile('images')) {
+                foreach ($request->file('images') as $imageFile) {
+                    $dropboxUrl = $this->dropboxService->uploadFile($imageFile);
+                    
+                    if ($dropboxUrl) {
+                        PlaceImage::create([
+                            'place_id' => $place->id,
+                            'image' => $dropboxUrl  
+                        ]);
+                    } else {
+                        throw new \Exception('Image upload to Dropbox failed');
+                    }
                 }
             }
             
@@ -101,7 +103,6 @@ class PlaceController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-// PlaceController.php
     public function index()
     {
         $places = Place::with(['images', 'facilities', 'ratings'])
