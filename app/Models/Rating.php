@@ -25,4 +25,15 @@ class Rating extends Model
     {
         return $this->belongsTo(Place::class);
     }
+
+    public function images()
+    {
+        return $this->hasMany(RatingImage::class);
+    }
+    
+    // Add this relationship method to connect with facilities via the existing pivot table
+    public function confirmedFacilities()
+    {
+        return $this->belongsToMany(Facility::class, 'rating_confirmed_facility');
+    }
 }
