@@ -165,4 +165,84 @@ class DropboxService
             $url
         );
     }
+
+    /**
+     * Delete a file from Dropbox
+     *
+     * @param string $url The shareable Dropbox URL or file path
+     * @return bool
+     * @throws \Exception
+     */
+    public function deleteFile(string $url)
+    {
+        try {
+            // Convert URL to Dropbox file path
+            $path = $this->convertUrlToPath($url);
+            \Log::info("Attempting to delete Dropbox file: {$path}");
+
+            // Make DELETE request to Dropbox API
+            $response = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $this->accessToken,
+                'Content-Type' => 'application/json',
+            ])->post('https://api.dropboxapi.com/2/files/delete_v2', [
+                'path' => $path,
+            ]);
+
+            // Handle unauthorized error by refreshing token and retrying
+            if ($response->status() === 401) {
+                \Log::warning("Unauthorized Dropbox request, refreshing token");
+                Cache::forget('dropbox_access_token');
+                $this->accessToken = $this->refreshAccessToken();
+                $response = Http::withHeaders([
+                    'Authorization' => 'Bearer ' . $this->accessToken,
+                    'Content-Type' => 'application/json',
+                ])->post('https://api.dropboxapi.com/2/files/delete_v2', [
+                    'path' => $path,
+                ]);
+            }
+
+            if (!$response->successful()) {
+                \Log::error('Dropbox delete failed', [
+                    'path' => $path,
+                    'status' => $response->status(),
+                    'response' => $response->body(),
+                ]);
+                throw new \Exception('Failed to delete file from Dropbox: ' . $response->body());
+            }
+
+            \Log::info("Successfully deleted Dropbox file: {$path}");
+            return true;
+
+        } catch (\Exception $e) {
+            \Log::error('Dropbox delete error: ' . $e->getMessage(), [
+                'url' => $url,
+                'path' => $path ?? 'N/A',
+            ]);
+            throw $e;
+        }
+    }
+
+    /**
+     * Convert Dropbox shareable URL to file path
+     *
+     * @param string $url
+     * @return string
+     */
+    protected function convertUrlToPath(string $url)
+    {
+        // Example URL: https://dl.dropboxusercontent.com/s/randomid/image.jpg
+        // Target path: /place-images/image.jpg
+
+        // Parse URL
+        $parsed = parse_url($url);
+        $path = $parsed['path'] ?? '';
+
+        // Extract filename from path
+        $filename = basename($path);
+
+        // Assume files are stored in /place-images (as per uploadFile)
+        $dropboxPath = '/place-images/' . $filename;
+
+        return $dropboxPath;
+    }
 }

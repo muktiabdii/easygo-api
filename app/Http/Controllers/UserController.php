@@ -20,10 +20,9 @@ class UserController extends Controller
         $this->dropboxService = $dropboxService;
     }
 
-    // method register
+    // Register method
     public function register(Request $request)
     {
-        // validasi request
         $request->validate([
             'name' => 'required|string|max:255',
             'number' => 'required|string|max:15',
@@ -33,7 +32,6 @@ class UserController extends Controller
             'email' => 'required|string|email|max:255|unique:users',
             'password' => 'required|string|min:8|confirmed|regex:/^(?=.*[a-zA-Z])(?=.*[0-9]).+$/',
         ], [
-            // error messages
             'password.regex' => 'Password harus mengandung minimal satu huruf dan satu angka.',
             'password.confirmed' => 'Konfirmasi password tidak cocok.',
             'password.min' => 'Password minimal terdiri dari 8 karakter.',
@@ -41,7 +39,6 @@ class UserController extends Controller
             'email.unique' => 'Email sudah digunakan.',
         ]);
 
-        // create user
         $user = User::create([
             'name' => $request->name,
             'number' => $request->number,
@@ -50,44 +47,52 @@ class UserController extends Controller
             'city' => $request->city,
             'email' => $request->email,
             'password' => bcrypt($request->password),
+            'role' => 'user', // Set default role
         ]);
 
-        // return response
         return response()->json([
             'message' => 'Akun berhasil terdaftar'
         ], 201);
     }
 
-    // method login with secure cookies
+    // Login method
     public function login(Request $request)
     {
-        // validasi request
         $request->validate([
             'email' => 'required|string|email|max:255',
             'password' => 'required|string|min:8',
         ]);
 
-        // check email and password
         if (auth()->attempt(['email' => $request->email, 'password' => $request->password])) {
             $user = auth()->user();
+            if ($user->role !== 'user') {
+                return response()->json([
+                    'message' => 'Akun admin tidak dapat login di halaman ini.'
+                ], 403);
+            }
+            
             $token = $user->createToken('auth_token')->plainTextToken;
 
-            // Store token in secure HTTP-only cookie
             $cookie = cookie(
                 'auth_token',
                 $token,
-                60 * 24, // 1 day
+                60 * 24,
                 null,
-                null, // path, domain
-                true,       // secure (HTTPS only)
-                true,       // httpOnly
-                false,      // raw
+                null,
+                true,
+                true,
+                false,
                 'strict'
-            );  // same site policy
+            );
 
             return response()->json([
                 'message' => 'Login berhasil',
-                'token' => $token, // Still include token in response for initial setup
+                'token' => $token,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'role' => $user->role,
+                ],
             ], 200)->withCookie($cookie);
         }
 
@@ -96,15 +101,58 @@ class UserController extends Controller
         ], 401);
     }
 
-    // method logout
+    // Admin login method
+    public function adminLogin(Request $request)
+    {
+        $request->validate([
+            'email' => 'required|string|email|max:255',
+            'password' => 'required|string|min:8',
+        ]);
+
+        if (auth()->attempt(['email' => $request->email, 'password' => $request->password])) {
+            $user = auth()->user();
+            if ($user->role !== 'admin') {
+                return response()->json([
+                    'message' => 'Akses ditolak. Hanya admin yang diizinkan.'
+                ], 403);
+            }
+
+            $token = $user->createToken('auth_token')->plainTextToken;
+            $cookie = cookie(
+                'auth_token',
+                $token,
+                60 * 24,
+                null,
+                null,
+                true,
+                true,
+                false,
+                'strict'
+            );
+
+            return response()->json([
+                'message' => 'Login admin berhasil',
+                'token' => $token,
+                'user' => [
+                    'id' => $user->id,
+                    'name' => $user->name,
+                    'role' => $user->role,
+                ],
+            ], 200)->withCookie($cookie);
+        }
+
+        return response()->json([
+            'message' => 'Email atau password salah'
+        ], 401);
+    }
+
+    // Logout method
     public function logout(Request $request)
     {
-        // Revoke the token from the database
         if ($request->user()) {
             $request->user()->currentAccessToken()->delete();
         }
 
-        // Clear the auth cookie
         $cookie = Cookie::forget('auth_token');
 
         return response()->json([
@@ -112,17 +160,16 @@ class UserController extends Controller
         ])->withCookie($cookie);
     }
 
-    // Token validation endpoint
+    // Validate token method
     public function validateToken(Request $request)
     {
-        // User is already authenticated via middleware if they reach here
         return response()->json([
             'valid' => true,
             'user' => $request->user()
         ]);
     }
 
-    // method send reset link email
+    // Send reset link email method
     public function sendResetLinkEmail(Request $request)
     {
         $request->validate([
@@ -130,16 +177,11 @@ class UserController extends Controller
         ]);
 
         $otp = rand(100000, 999999);
-
-        // Ambil user yang sesuai
         $user = User::where('email', $request->email)->first();
-
-        // Simpan OTP dan waktu kadaluarsa ke database
         $user->reset_otp = $otp;
         $user->otp_expires_at = now()->addMinutes(5);
         $user->save();
 
-        // Kirim email OTP
         Mail::to($user->email)->send(new ResetOtpMail($user, $otp));
 
         return response()->json([
@@ -147,8 +189,7 @@ class UserController extends Controller
         ]);
     }
 
-
-    // method validate otp
+    // Validate OTP method
     public function validateOtp(Request $request)
     {
         $request->validate([
@@ -157,7 +198,6 @@ class UserController extends Controller
         ]);
 
         $user = User::where('email', $request->email)->first();
-
         if (!$user || $user->reset_otp !== $request->otp || now()->gt($user->otp_expires_at)) {
             return response()->json(['message' => 'OTP tidak valid atau sudah kedaluwarsa'], 422);
         }
@@ -165,7 +205,7 @@ class UserController extends Controller
         return response()->json(['message' => 'OTP valid']);
     }
 
-    // method reset password
+    // Reset password method
     public function resetPassword(Request $request)
     {
         $request->validate([
@@ -175,7 +215,6 @@ class UserController extends Controller
         ]);
 
         $user = User::where('email', $request->email)->first();
-
         if (!$user || $user->reset_otp !== $request->otp || now()->gt($user->otp_expires_at)) {
             return response()->json(['message' => 'OTP tidak valid atau sudah kedaluwarsa'], 422);
         }
@@ -188,9 +227,9 @@ class UserController extends Controller
         return response()->json(['message' => 'Password berhasil direset']);
     }
 
+    // Update user method
     public function update(Request $request)
     {
-        // Validate the request data
         $request->validate([
             'name' => 'required|string|max:255',
             'number' => 'required|string|max:15',
@@ -199,22 +238,16 @@ class UserController extends Controller
             'city' => 'required|string|max:255',
             'email' => 'required|string|email|max:255',
         ], [
-            // error messages
             'name.required' => 'Nama pengguna tidak boleh kosong.',
             'number.required' => 'Nomor telepon tidak boleh kosong.',
         ]);
 
         try {
-            // Get the authenticated user
             $user = $request->user();
-
-            // Check if the email is being changed and if it's already taken
             if ($user->email !== $request->email) {
-
                 $existingUser = User::where('email', $request->email)
                     ->where('id', '!=', $user->id)
                     ->first();
-
                 if ($existingUser) {
                     return response()->json([
                         'message' => 'Email sudah digunakan oleh pengguna lain.',
@@ -223,7 +256,6 @@ class UserController extends Controller
                 }
             }
 
-            // Update user information
             $user->name = $request->name;
             $user->number = $request->number;
             $user->country = $request->country;
@@ -232,14 +264,12 @@ class UserController extends Controller
             $user->email = $request->email;
             $user->save();
 
-            // Return success response
             return response()->json([
                 'message' => 'Profil berhasil diperbarui.',
                 'success' => true,
                 'user' => $user
             ], 200);
         } catch (\Exception $e) {
-            // Return error response
             return response()->json([
                 'message' => 'Gagal memperbarui profil. ' . $e->getMessage(),
                 'success' => false
@@ -247,17 +277,11 @@ class UserController extends Controller
         }
     }
 
-    /**
-     * Update user profile image
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
+    // Update profile image method
     public function updateProfileImage(Request $request)
     {
-        // Validate image
         $request->validate([
-            'profile_image' => 'required|file|image|mimes:jpeg,png,jpg|max:5120', // 5MB max
+            'profile_image' => 'required|file|image|mimes:jpeg,png,jpg|max:5120',
         ], [
             'profile_image.required' => 'Gambar profil harus diunggah.',
             'profile_image.image' => 'File harus berupa gambar.',
@@ -266,31 +290,26 @@ class UserController extends Controller
         ]);
 
         try {
-            // Get the authenticated user
             $user = $request->user();
-            
-            // Upload to Dropbox
             $profileImage = $request->file('profile_image');
             $dropboxUrl = $this->dropboxService->uploadFile($profileImage, '/profile-images');
-            
+
             if (!$dropboxUrl) {
                 return response()->json([
                     'message' => 'Gagal mengunggah gambar profil ke server.',
                     'success' => false
                 ], 500);
             }
-            
-            // Update user profile image URL
+
             $user->profile_image = $dropboxUrl;
             $user->save();
-            
+
             return response()->json([
                 'message' => 'Gambar profil berhasil diperbarui.',
                 'success' => true,
                 'profile_image' => $dropboxUrl,
                 'user' => $user
             ], 200);
-            
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Gagal memperbarui gambar profil. ' . $e->getMessage(),
@@ -298,5 +317,4 @@ class UserController extends Controller
             ], 500);
         }
     }
-    
 }
