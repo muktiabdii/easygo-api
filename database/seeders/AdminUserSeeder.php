@@ -17,7 +17,7 @@ class AdminUserSeeder extends Seeder
             'country' => 'Indonesia',
             'province' => 'Unknown',
             'city' => 'Unknown',
-            'is_admin' => true,
+            'role' => 'admin',
         ]);
     }
 }
