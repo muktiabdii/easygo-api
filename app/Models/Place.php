@@ -15,6 +15,7 @@ class Place extends Model
         'description',
         'latitude',
         'longitude',
+        'status',
     ];
 
     public function images()

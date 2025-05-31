@@ -135,4 +135,33 @@ class ReviewController extends Controller
 
         return response()->json($reviews);
     }
+
+    /**
+     * Get all reviews by the authenticated user
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function getUserReviews()
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        $reviews = Rating::with(['place', 'place.facilities'])
+            ->where('user_id', $user->id)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($review) {
+                return [
+                    'place_id' => $review->place->id,
+                    'title' => $review->place->name,
+                    'address' => $review->place->address,
+                    'rating' => $review->place->ratings()->avg('rating') ?? 0,
+                    'facilities' => $review->place->facilities->pluck('id')->toArray(),
+                ];
+            });
+
+        return response()->json($reviews);
+    }
 }
