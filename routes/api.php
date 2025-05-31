@@ -22,6 +22,14 @@ Route::prefix('auth')->controller(UserController::class)->group(function () {
     Route::get('/validate-token', 'validateToken')->middleware('auth:sanctum');
 });
 
+
+Route::prefix('places')->group(function () {
+    Route::get('/', [PlaceController::class, 'index']); 
+    Route::get('/{id}', [PlaceController::class, 'show']); 
+    Route::get('/{id}/reviews', [ReviewController::class, 'getPlaceReviews']);
+});
+
+
 Route::middleware('auth:sanctum')->group(function () {
     // Protected routes that require authentication
     Route::prefix('places')->group(function () {
@@ -33,17 +41,15 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::prefix('reviews')->group(function () {
         Route::post('/', [ReviewController::class, 'store']);
     });
-});
 
-Route::prefix('places')->group(function () {
-    Route::get('/', [PlaceController::class, 'index']); 
-    Route::get('/{id}', [PlaceController::class, 'show']); 
-    Route::get('/{id}/reviews', [ReviewController::class, 'getPlaceReviews']);
-});
-
-Route::prefix('chat')->group(function () {
+    Route::prefix('chat')->group(function () {
     Route::get('/', [ChatController::class, 'index']);
     Route::post('/', [ChatController::class, 'createRoom']);
     Route::get('/{chatRoomId}/messages', [ChatController::class, 'messages']);
     Route::post('/{chatRoomId}/messages', [ChatController::class, 'sendMessage']);
+    Route::post('/messages/search', [ChatController::class, 'searchMessages']);
+    });
+
+    Route::get('/user', [UserController::class, 'getAuthenticatedUserId']);
 });
+

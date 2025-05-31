@@ -247,12 +247,6 @@ class UserController extends Controller
         }
     }
 
-    /**
-     * Update user profile image
-     *
-     * @param Request $request
-     * @return \Illuminate\Http\JsonResponse
-     */
     public function updateProfileImage(Request $request)
     {
         // Validate image
@@ -268,29 +262,29 @@ class UserController extends Controller
         try {
             // Get the authenticated user
             $user = $request->user();
-            
+
             // Upload to Dropbox
             $profileImage = $request->file('profile_image');
             $dropboxUrl = $this->dropboxService->uploadFile($profileImage, '/profile-images');
-            
+
             if (!$dropboxUrl) {
                 return response()->json([
                     'message' => 'Gagal mengunggah gambar profil ke server.',
                     'success' => false
                 ], 500);
             }
-            
+
             // Update user profile image URL
             $user->profile_image = $dropboxUrl;
             $user->save();
-            
+
             return response()->json([
                 'message' => 'Gambar profil berhasil diperbarui.',
                 'success' => true,
                 'profile_image' => $dropboxUrl,
                 'user' => $user
             ], 200);
-            
+
         } catch (\Exception $e) {
             return response()->json([
                 'message' => 'Gagal memperbarui gambar profil. ' . $e->getMessage(),
@@ -298,5 +292,34 @@ class UserController extends Controller
             ], 500);
         }
     }
-    
+
+    public function getAuthenticatedUserId(Request $request)
+    {
+        // Ambil token dari Bearer Authorization header
+        $token = $request->bearerToken();
+
+        // Jika tidak ada Bearer Token, coba ambil dari cookie 'auth_token'
+        if (!$token) {
+            $token = $request->cookie('auth_token');
+        }
+
+        if (!$token) {
+            return response()->json(['message' => 'Token tidak ditemukan'], 401);
+        }
+
+        // Temukan token di database dan hubungkan ke user
+        $accessToken = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+
+        if (!$accessToken) {
+            return response()->json(['message' => 'Token tidak valid'], 401);
+        }
+
+        // Ambil user dari token
+        $user = $accessToken->tokenable;
+
+        return response()->json([
+            'user_id' => $user->id,
+            'message' => 'User berhasil diidentifikasi'
+        ], 200);
+    }
 }
