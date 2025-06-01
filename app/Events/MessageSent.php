@@ -1,4 +1,5 @@
 <?php
+
 namespace App\Events;
 
 use App\Models\Message;
@@ -21,8 +22,9 @@ class MessageSent implements ShouldBroadcast
 
     public function broadcastOn()
     {
-        \Log::info("Broadcasting to channel: chat-room-message.{$this->message->chat_room_id}");
-        return new Channel('chat-room-message.' . $this->message->chat_room_id);
+        $channel = 'chat-room-message.' . $this->message->chat_room_id;
+        \Log::info("Broadcasting to channel:", ['channel' => $channel]);
+        return new Channel($channel);
     }
 
     public function broadcastAs()
@@ -32,13 +34,15 @@ class MessageSent implements ShouldBroadcast
 
     public function broadcastWith()
     {
+        $createdAt = \Carbon\Carbon::parse($this->message->created_at)->setTimezone('Asia/Jakarta');
         $payload = [
             'message' => [
                 'id' => $this->message->id,
                 'sender_id' => $this->message->sender_id,
                 'message' => $this->message->message,
-                'created_at' => $this->message->created_at->toISOString(),
-                'chat_room_id' => $this->message->chat_room_id, // Tambahkan chat_room_id
+                'created_at' => $createdAt->toISOString(),
+                'chat_room_id' => $this->message->chat_room_id,
+                'time' => $createdAt->format('H:i'),
             ]
         ];
         \Log::debug("Broadcast payload:", $payload);

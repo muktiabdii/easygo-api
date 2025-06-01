@@ -118,26 +118,38 @@ class ChatController extends Controller
     // method untuk mengirim pesan
     public function sendMessage(Request $request, $chatRoomId)
     {
+        \Log::info("Received sendMessage request:", ['chatRoomId' => $chatRoomId, 'message' => $request->message, 'userId' => Auth::id()]);
         $request->validate(['message' => 'required|string']);
         $chatRoom = ChatRoom::find($chatRoomId);
         if (!$chatRoom) {
             \Log::error("Chat room not found: {$chatRoomId}");
             return response()->json(['error' => 'Chat room not found'], 404);
         }
-        $message = Message::create([
-            'chat_room_id' => $chatRoomId,
-            'sender_id' => Auth::id(),
-            'message' => $request->message,
-            'created_at' => now('Asia/Jakarta'),
-        ]);
-        \Log::info("Message created:", ['room' => $chatRoomId, 'message' => $message->toArray()]);
-        broadcast(new MessageSent($message));
-        return response()->json([
-            'id' => $message->id,
-            'sender_id' => $message->sender_id,
-            'message' => $message->message,
-            'created_at' => $message->created_at->toISOString(),
-        ]);
+        try {
+            $message = Message::create([
+                'chat_room_id' => $chatRoomId,
+                'sender_id' => Auth::id(),
+                'message' => $request->message,
+                'created_at' => now('Asia/Jakarta'),
+            ]);
+            \Log::info("Message created:", ['room' => $chatRoomId, 'message' => $message->toArray()]);
+            try {
+                broadcast(new \App\Events\MessageSent($message))->toOthers();
+                \Log::info("Broadcast initiated for message:", ['messageId' => $message->id, 'channel' => 'chat-room-message.' . $chatRoomId]);
+            } catch (\Exception $e) {
+                \Log::error("Broadcast failed:", ['error' => $e->getMessage(), 'messageId' => $message->id]);
+            }
+            return response()->json([
+                'id' => $message->id,
+                'sender_id' => $message->sender_id,
+                'message' => $message->message,
+                'created_at' => $message->created_at->toISOString(),
+                'time' => $message->created_at->format('H:i'),
+            ]);
+        } catch (\Exception $e) {
+            \Log::error("Failed to create message:", ['error' => $e->getMessage()]);
+            return response()->json(['error' => 'Failed to send message'], 500);
+        }
     }
 
     // method untuk membuat chat room
@@ -163,9 +175,20 @@ class ChatController extends Controller
                 'user1_id' => $user1,
                 'user2_id' => $user2
             ]);
+            // Broadcast the new room creation
+            broadcast(new \App\Events\RoomCreated($room));
         }
 
-        return response()->json($room);
+        // Load user1 and user2 details for consistency with index
+        $room->load('user1:id,name', 'user2:id,name');
+
+        return response()->json([
+            'id' => $room->id,
+            'chat_room_id' => $room->id,
+            'user1' => $room->user1,
+            'user2' => $room->user2,
+            'last_message' => null,
+        ]);
     }
 
     // method untuk mencari pesan dalam chat room berdasarkan kata kunci

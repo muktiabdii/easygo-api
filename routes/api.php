@@ -19,6 +19,7 @@ Route::prefix('auth')->controller(UserController::class)->group(function () {
     Route::put('/update', 'update')->middleware('auth:sanctum');
     Route::post('/update-profile-image', 'updateProfileImage')->middleware('auth:sanctum');
     Route::get('/validate-token', 'validateToken')->middleware('auth:sanctum');
+    Route::get('/user', [UserController::class, 'getAuthenticatedUserId'])->middleware('auth:sanctum');
 });
 
 
@@ -54,6 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/messages/search', [ChatController::class, 'searchMessages']);
         });
 
+        Route::get('/users/search', [UserController::class, 'searchUsers']);
         Route::get('/user', [UserController::class, 'getAuthenticatedUserId']);
 });
 
