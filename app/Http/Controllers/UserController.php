@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Facades\Cookie;
 use Laravel\Sanctum\PersonalAccessToken;
+use Illuminate\Support\Facades\Log;
 
 class UserController extends Controller
 {
@@ -276,7 +277,6 @@ class UserController extends Controller
             ], 500);
         }
     }
-
     // Update profile image method
     public function updateProfileImage(Request $request)
     {
@@ -291,6 +291,8 @@ class UserController extends Controller
 
         try {
             $user = $request->user();
+
+            // Upload to Dropbox
             $profileImage = $request->file('profile_image');
             $dropboxUrl = $this->dropboxService->uploadFile($profileImage, '/profile-images');
 
@@ -301,6 +303,7 @@ class UserController extends Controller
                 ], 500);
             }
 
+            // Update user profile image URL
             $user->profile_image = $dropboxUrl;
             $user->save();
 
@@ -315,6 +318,118 @@ class UserController extends Controller
                 'message' => 'Gagal memperbarui gambar profil. ' . $e->getMessage(),
                 'success' => false
             ], 500);
+        }
+    }
+
+    public function getAuthenticatedUserId(Request $request)
+    {
+        // Ambil token dari Bearer Authorization header
+        $token = $request->bearerToken();
+
+        // Jika tidak ada Bearer Token, coba ambil dari cookie 'auth_token'
+        if (!$token) {
+            $token = $request->cookie('auth_token');
+        }
+
+        if (!$token) {
+            return response()->json(['message' => 'Token tidak ditemukan'], 401);
+        }
+
+        // Temukan token di database dan hubungkan ke user
+        $accessToken = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
+
+        if (!$accessToken) {
+            return response()->json(['message' => 'Token tidak valid'], 401);
+        }
+
+        // Ambil user dari token
+        $user = $accessToken->tokenable;
+
+        return response()->json([
+            'user_id' => $user->id,
+            'message' => 'User berhasil diidentifikasi'
+        ], 200);
+    }
+
+    // app/Http/Controllers/UserController.php
+public function searchUsers(Request $request)
+    {
+        try {
+            $request->validate([
+                'query' => 'nullable|string|max:255',
+                'city' => 'nullable|string|max:255',
+                'review_count' => 'nullable|string',
+                'last_active' => 'nullable|string',
+            ]);
+
+            Log::info('SearchUsers: Request params', $request->all());
+
+            $query = User::query()->where('role', 'user');
+
+            if ($request->filled('query')) {
+                $query->where(function ($q) use ($request) {
+                    $q->where('name', 'like', '%' . $request->query('query') . '%')
+                      ->orWhere('email', 'like', '%' . $request->query('query') . '%');
+                });
+            }
+
+            if ($request->filled('city') && $request->city !== 'Semua Kota') {
+                $query->where('city', $request->city);
+            }
+
+            if ($request->filled('review_count') && $request->review_count !== 'Semua') {
+                $reviewCount = $request->review_count;
+                if (preg_match('/(\d+)\+/', $reviewCount, $matches)) {
+                    $query->where('reviews_count', '>=', (int) $matches[1]);
+                } elseif ($reviewCount === '0') {
+                    $query->where('reviews_count', 0);
+                }
+            }
+
+            if ($request->filled('last_active') && $request->last_active !== 'Semua') {
+                $lastActive = $request->last_active;
+                if ($lastActive === 'Hari ini') {
+                    $query->where('last_active', '>=', now()->startOfDay());
+                } elseif ($lastActive === 'Kemarin') {
+                    $query->whereBetween('last_active', [
+                        now()->subDay()->startOfDay(),
+                        now()->subDay()->endOfDay(),
+                    ]);
+                } elseif ($lastActive === 'Minggu ini') {
+                    $query->where('last_active', '>=', now()->startOfWeek());
+                } elseif ($lastActive === 'Bulan lalu') {
+                    $query->whereBetween('last_active', [
+                        now()->subMonth()->startOfMonth(),
+                        now()->subMonth()->endOfMonth(),
+                    ]);
+                } elseif ($lastActive === 'Tahun lalu') {
+                    $query->whereBetween('last_active', [
+                        now()->subYear()->startOfYear(),
+                        now()->subYear()->endOfYear(),
+                    ]);
+                }
+            }
+
+            // Exclude current user only if authenticated
+            if (auth()->check()) {
+                $query->where('id', '!=', auth()->id());
+            } else {
+                Log::warning('SearchUsers: No authenticated user');
+            }
+
+            $users = $query->select('id', 'name', 'city', 'profile_image', 'reviews_count', 'last_active')
+                           ->get();
+
+            Log::info('SearchUsers: Response', ['users' => $users->toArray()]);
+
+            return response()->json($users);
+        } catch (\Exception $e) {
+            Log::error('SearchUsers: Error', [
+                'message' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+                'request' => $request->all(),
+            ]);
+            return response()->json(['message' => 'Server Error: ' . $e->getMessage()], 500);
         }
     }
 }

@@ -19,7 +19,16 @@ Route::prefix('auth')->controller(UserController::class)->group(function () {
     Route::put('/update', 'update')->middleware('auth:sanctum');
     Route::post('/update-profile-image', 'updateProfileImage')->middleware('auth:sanctum');
     Route::get('/validate-token', 'validateToken')->middleware('auth:sanctum');
+    Route::get('/user', [UserController::class, 'getAuthenticatedUserId'])->middleware('auth:sanctum');
 });
+
+
+Route::prefix('places')->group(function () {
+    Route::get('/', [PlaceController::class, 'index']); 
+    Route::get('/{id}', [PlaceController::class, 'show']); 
+    Route::get('/{id}/reviews', [ReviewController::class, 'getPlaceReviews']);
+});
+
 
 Route::middleware('auth:sanctum')->group(function () {
     // Protected routes that require authentication
@@ -37,17 +46,16 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/', [ReviewController::class, 'store']);
         Route::get('/user', [ReviewController::class, 'getUserReviews']); // New route for user reviews
     });
+
+    Route::prefix('chat')->group(function () {
+        Route::get('/', [ChatController::class, 'index']);
+        Route::post('/', [ChatController::class, 'createRoom']);
+        Route::get('/{chatRoomId}/messages', [ChatController::class, 'messages']);
+        Route::post('/{chatRoomId}/messages', [ChatController::class, 'sendMessage']);
+        Route::post('/messages/search', [ChatController::class, 'searchMessages']);
+        });
+
+        Route::get('/users/search', [UserController::class, 'searchUsers']);
+        Route::get('/user', [UserController::class, 'getAuthenticatedUserId']);
 });
 
-Route::prefix('places')->group(function () {
-    Route::get('/', [PlaceController::class, 'index']);
-    Route::get('/{id}', [PlaceController::class, 'show']);
-    Route::get('/{id}/reviews', [ReviewController::class, 'getPlaceReviews']);
-});
-
-Route::prefix('chat')->group(function () {
-    Route::get('/', [ChatController::class, 'index']);
-    Route::post('/', [ChatController::class, 'createRoom']);
-    Route::get('/{chatRoomId}/messages', [ChatController::class, 'messages']);
-    Route::post('/{chatRoomId}/messages', [ChatController::class, 'sendMessage']);
-});
