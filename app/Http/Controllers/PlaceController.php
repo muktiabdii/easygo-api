@@ -18,12 +18,6 @@ class PlaceController extends Controller
         $this->dropboxService = $dropboxService;
     }
 
-    /**
-     * Store a newly created place in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -38,43 +32,52 @@ class PlaceController extends Controller
             'facilities' => 'nullable|json',
         ]);
 
+        // Ambil user yang sedang login
+        $user = auth()->user();
+        if (!$user) {
+            return response()->json(['error' => 'Unauthorized'], 401);
+        }
+
+        // Update last_active user
+        $user->update(['last_active' => now()]);
+
         DB::beginTransaction();
 
         try {
-            // Create the place with pending status
+            // Buat tempat baru dengan user_id yang login
             $place = Place::create([
+                'user_id' => $user->id,
                 'name' => $validated['name'],
                 'address' => $validated['address'],
-                'description' => null,
+                'comment' => $validated['comment'],
                 'latitude' => $validated['latitude'],
                 'longitude' => $validated['longitude'],
-                'status' => 'pending', // Set default status
+                'status' => 'pending',
             ]);
 
-            // Create the rating
+            // Buat rating untuk tempat
             $rating = $place->ratings()->create([
-                'user_id' => $request->user()->id,
+                'user_id' => $user->id,
                 'rating' => $validated['rating'],
                 'comment' => $validated['comment'],
             ]);
 
-            // Handle multiple images upload
+            // Upload gambar ke Dropbox
             if ($request->hasFile('images')) {
                 foreach ($request->file('images') as $imageFile) {
                     $dropboxUrl = $this->dropboxService->uploadFile($imageFile);
-
-                    if ($dropboxUrl) {
-                        PlaceImage::create([
-                            'place_id' => $place->id,
-                            'image' => $dropboxUrl
-                        ]);
-                    } else {
+                    if (!$dropboxUrl) {
                         throw new \Exception('Image upload to Dropbox failed');
                     }
+
+                    PlaceImage::create([
+                        'place_id' => $place->id,
+                        'image' => $dropboxUrl
+                    ]);
                 }
             }
 
-            // Handle facilities
+            // Tambahkan fasilitas jika ada
             if ($request->has('facilities')) {
                 $facilityIds = json_decode($validated['facilities'], true);
                 if (!empty($facilityIds)) {
@@ -100,15 +103,11 @@ class PlaceController extends Controller
         }
     }
 
-    /**
-     * Get all places
-     *
-     * @return \Illuminate\Http\Response
-     */
+
     public function index()
     {
         $places = Place::with(['images', 'facilities', 'ratings'])
-            ->where('status', 'approved') // Only fetch approved places
+            ->where('status', 'approved')
             ->get()
             ->map(function ($place) {
                 $place->average_rating = $place->ratings->avg('rating');
@@ -128,12 +127,6 @@ class PlaceController extends Controller
         return response()->json($place);
     }
 
-    /**
-     * Approve a place
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function approve($id)
     {
         $place = Place::findOrFail($id);
@@ -142,16 +135,22 @@ class PlaceController extends Controller
             return response()->json(['error' => 'Unauthorized'], 403);
         }
 
+        auth()->user()->update(['last_active' => now()]);
+
+        // Update status place menjadi approved
         $place->update(['status' => 'approved']);
+
+        // Ambil user yang menambahkan place ini (asumsi ada kolom user_id di places)
+        $user = $place->user; // Pastikan di model Place ada relasi user()
+
+        if ($user) {
+            // Tambah reviews_count user tersebut sebanyak 1
+            $user->increment('reviews_count');
+        }
+
         return response()->json(['message' => 'Place approved successfully', 'place' => $place]);
     }
 
-    /**
-     * Reject a place
-     *
-     * @param  int  $id
-     * @return \Illuminate\Http\Response
-     */
     public function reject($id)
     {
         $place = Place::findOrFail($id);
@@ -159,6 +158,8 @@ class PlaceController extends Controller
         if (auth()->user()->role !== 'admin') {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
+
+        auth()->user()->update(['last_active' => now()]);
 
         $place->update(['status' => 'rejected']);
         return response()->json(['message' => 'Place rejected successfully', 'place' => $place]);
@@ -172,6 +173,9 @@ class PlaceController extends Controller
             \Log::warning("Unauthorized attempt to delete place ID: {$id}");
             return response()->json(['error' => 'Unauthorized'], 403);
         }
+
+        auth()->user()->update(['last_active' => now()]);
+
         DB::beginTransaction();
         try {
             foreach ($place->images as $image) {
@@ -180,7 +184,6 @@ class PlaceController extends Controller
                     $this->dropboxService->deleteFile($image->image);
                 } catch (\Exception $e) {
                     \Log::warning("Failed to delete Dropbox file: {$image->image}. Error: {$e->getMessage()}");
-                    // Continue deletion even if Dropbox fails
                 }
                 $image->delete();
             }
@@ -200,16 +203,13 @@ class PlaceController extends Controller
         }
     }
 
-    /**
-     * Get pending places for admin review
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function pending()
+    public function pending(Request $request)
     {
         if (auth()->user()->role !== 'admin') {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
+
+        auth()->user()->update(['last_active' => now()]);
 
         $places = Place::with(['images', 'facilities', 'ratings'])
             ->get()

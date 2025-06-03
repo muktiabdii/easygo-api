@@ -11,12 +11,13 @@ use Illuminate\Support\Facades\Auth;
 
 class ChatController extends Controller
 {
-    // method untuk ambil semua chat room
     public function index()
     {
         $userId = Auth::id();
 
-        // ambil semua chat room yang dimiliki user
+        // Update last_active
+        Auth::user()->update(['last_active' => now()]);
+
         $chats = ChatRoom::where('user1_id', $userId)
             ->orWhere('user2_id', $userId)
             ->with([
@@ -29,19 +30,16 @@ class ChatController extends Controller
             ])
             ->get();
 
-        // menampilkan tampilan chat room dengan pesan terakhir
         $chatsWithLastMessage = $chats->map(function ($chat) {
             $lastMessage = $chat->messages->first();
 
             $formattedLastMessage = null;
 
-            // format pesan terakhir
             if ($lastMessage) {
                 $createdAt = Carbon::parse($lastMessage->created_at)->setTimezone('Asia/Jakarta');
                 $updatedAt = Carbon::parse($lastMessage->updated_at)->setTimezone('Asia/Jakarta');
 
-                // gunakan format ISO 8601 untuk created_at dan updated_at
-                $createdAtFormatted = $createdAt->toISOString(); // misal: "2025-05-31T13:48:00.000Z"
+                $createdAtFormatted = $createdAt->toISOString();
                 $updatedAtFormatted = $updatedAt->toISOString();
 
                 $formattedLastMessage = [
@@ -55,7 +53,6 @@ class ChatController extends Controller
                 ];
             }
 
-            // mengembalikan data chat room dengan pesan terakhir
             return [
                 'chat_room_id' => $chat->id,
                 'user1' => $chat->user1,
@@ -68,44 +65,35 @@ class ChatController extends Controller
         return response()->json($chatsWithLastMessage);
     }
 
-    // method untuk ambil semua pesan dalam chat room
     public function messages($chatRoomId)
     {
-        // set lokal ke bahasa Indonesia
+        // Update last_active
+        Auth::user()->update(['last_active' => now()]);
+
         Carbon::setLocale('id');
 
-        // mengambil semua pesan dalam chat room
         $messages = Message::where('chat_room_id', $chatRoomId)
             ->with('sender')
             ->orderBy('created_at', 'asc')
             ->get();
 
-        // array untuk menyimpan pesan yang sudah dikelompokkan
         $groupedMessages = [];
 
-        // mengelompokkan pesan berdasarkan tanggal
         foreach ($messages as $message) {
             $createdAt = Carbon::parse($message->created_at)->setTimezone('Asia/Jakarta');
 
-            // pengecekan untuk menentukan header tanggal
-            if ($createdAt->isToday()) {
-                $dateKey = 'Hari Ini';
-            } elseif ($createdAt->isYesterday()) {
-                $dateKey = 'Kemarin';
-            } else {
-                $dateKey = $createdAt->translatedFormat('l, j F Y'); // misal: Jumat, 16 Mei 2025
-            }
+            $dateKey = $createdAt->isToday() ? 'Hari Ini' :
+                ($createdAt->isYesterday() ? 'Kemarin' :
+                    $createdAt->translatedFormat('l, j F Y'));
 
-            // format jam biasa untuk bubble chat
             $timeFormatted = $createdAt->format('H:i');
 
-            // menambahkan pesan ke dalam array yang sudah dikelompokkan
             $groupedMessages[$dateKey][] = [
                 'id' => $message->id,
                 'chat_room_id' => $message->chat_room_id,
                 'sender_id' => $message->sender_id,
                 'message' => $message->message,
-                'created_at' => $createdAt->toISOString(), // tambahkan created_at dalam format ISO 8601
+                'created_at' => $createdAt->toISOString(),
                 'time' => $timeFormatted,
                 'sender' => $message->sender,
             ];
@@ -115,7 +103,6 @@ class ChatController extends Controller
         return response()->json($groupedMessages);
     }
 
-    // method untuk mengirim pesan
     public function sendMessage(Request $request, $chatRoomId)
     {
         \Log::info("Received sendMessage request:", ['chatRoomId' => $chatRoomId, 'message' => $request->message, 'userId' => Auth::id()]);
@@ -125,6 +112,10 @@ class ChatController extends Controller
             \Log::error("Chat room not found: {$chatRoomId}");
             return response()->json(['error' => 'Chat room not found'], 404);
         }
+
+        // Update last_active
+        Auth::user()->update(['last_active' => now()]);
+
         try {
             $message = Message::create([
                 'chat_room_id' => $chatRoomId,
@@ -152,34 +143,32 @@ class ChatController extends Controller
         }
     }
 
-    // method untuk membuat chat room
     public function createRoom(Request $request)
     {
         $request->validate([
             'user_id' => 'required|exists:users,id'
         ]);
 
+        // Update last_active
+        Auth::user()->update(['last_active' => now()]);
+
         $user1 = Auth::id();
         $user2 = $request->user_id;
 
-        // mengecek apakah chat room sudah ada
         $room = ChatRoom::where(function ($q) use ($user1, $user2) {
             $q->where('user1_id', $user1)->where('user2_id', $user2);
         })->orWhere(function ($q) use ($user1, $user2) {
             $q->where('user1_id', $user2)->where('user2_id', $user1);
         })->first();
 
-        // jika chat room tidak ada, buat chat room baru
         if (!$room) {
             $room = ChatRoom::create([
                 'user1_id' => $user1,
                 'user2_id' => $user2
             ]);
-            // Broadcast the new room creation
             broadcast(new \App\Events\RoomCreated($room));
         }
 
-        // Load user1 and user2 details for consistency with index
         $room->load('user1:id,name', 'user2:id,name');
 
         return response()->json([
@@ -191,14 +180,15 @@ class ChatController extends Controller
         ]);
     }
 
-    // method untuk mencari pesan dalam chat room berdasarkan kata kunci
     public function searchMessages(Request $request)
     {
         $request->validate(['keyword' => 'required|string|min:1']);
         $keyword = $request->keyword;
-        $userId = auth()->id(); // Mendapatkan ID pengguna yang sedang login
+        $userId = auth()->id();
 
-        // Cari pesan di semua chat room yang melibatkan pengguna yang login
+        // Update last_active
+        Auth::user()->update(['last_active' => now()]);
+
         $messages = Message::where(function ($query) use ($userId) {
             $query->whereHas('chatRoom', function ($q) use ($userId) {
                 $q->where('user1_id', $userId)->orWhere('user2_id', $userId);
@@ -209,7 +199,6 @@ class ChatController extends Controller
             ->orderBy('created_at', 'asc')
             ->get();
 
-        // Kelompokkan pesan berdasarkan tanggal
         $groupedMessages = [];
         foreach ($messages as $message) {
             $createdAt = Carbon::parse($message->created_at)->setTimezone('Asia/Jakarta');
@@ -224,7 +213,7 @@ class ChatController extends Controller
                 'created_at' => $createdAt->toISOString(),
                 'time' => $createdAt->format('H:i'),
                 'sender' => $message->sender,
-                'chat_room' => $message->chatRoom, // Menambahkan info chat room untuk konteks
+                'chat_room' => $message->chatRoom,
             ];
         }
 

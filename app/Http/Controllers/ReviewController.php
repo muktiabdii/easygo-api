@@ -32,6 +32,8 @@ class ReviewController extends Controller
             return response()->json(['hasReviewed' => false], 401);
         }
 
+        $user->update(['last_active' => now()]);
+
         $hasReviewed = Rating::where('place_id', $placeId)
             ->where('user_id', $user->id)
             ->exists();
@@ -68,6 +70,9 @@ class ReviewController extends Controller
         DB::beginTransaction();
 
         try {
+            // Update last_active
+            Auth::user()->update(['last_active' => now()]);
+
             // Find the place
             $place = Place::findOrFail($validated['place_id']);
 
@@ -77,6 +82,9 @@ class ReviewController extends Controller
                 'rating' => $validated['rating'],
                 'comment' => $validated['comment'] ?? '',
             ]);
+
+            $user = Auth::user();
+            $user->increment('reviews_count');
 
             // Handle images upload
             if ($request->hasFile('images')) {
@@ -147,6 +155,9 @@ class ReviewController extends Controller
         if (!$user) {
             return response()->json(['error' => 'Unauthorized'], 401);
         }
+
+        // Update last_active
+        $user->update(['last_active' => now()]);
 
         $reviews = Rating::with(['place', 'place.facilities'])
             ->where('user_id', $user->id)

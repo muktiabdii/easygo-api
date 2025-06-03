@@ -21,7 +21,6 @@ class UserController extends Controller
         $this->dropboxService = $dropboxService;
     }
 
-    // Register method
     public function register(Request $request)
     {
         $request->validate([
@@ -48,7 +47,7 @@ class UserController extends Controller
             'city' => $request->city,
             'email' => $request->email,
             'password' => bcrypt($request->password),
-            'role' => 'user', // Set default role
+            'role' => 'user',
         ]);
 
         return response()->json([
@@ -56,7 +55,6 @@ class UserController extends Controller
         ], 201);
     }
 
-    // Login method
     public function login(Request $request)
     {
         $request->validate([
@@ -71,7 +69,7 @@ class UserController extends Controller
                     'message' => 'Akun admin tidak dapat login di halaman ini.'
                 ], 403);
             }
-            
+
             $token = $user->createToken('auth_token')->plainTextToken;
 
             $cookie = cookie(
@@ -102,7 +100,6 @@ class UserController extends Controller
         ], 401);
     }
 
-    // Admin login method
     public function adminLogin(Request $request)
     {
         $request->validate([
@@ -147,7 +144,6 @@ class UserController extends Controller
         ], 401);
     }
 
-    // Logout method
     public function logout(Request $request)
     {
         if ($request->user()) {
@@ -161,16 +157,18 @@ class UserController extends Controller
         ])->withCookie($cookie);
     }
 
-    // Validate token method
     public function validateToken(Request $request)
     {
+        if ($request->user()) {
+            $request->user()->update(['last_active' => now()]);
+        }
+
         return response()->json([
             'valid' => true,
             'user' => $request->user()
         ]);
     }
 
-    // Send reset link email method
     public function sendResetLinkEmail(Request $request)
     {
         $request->validate([
@@ -190,7 +188,6 @@ class UserController extends Controller
         ]);
     }
 
-    // Validate OTP method
     public function validateOtp(Request $request)
     {
         $request->validate([
@@ -206,7 +203,6 @@ class UserController extends Controller
         return response()->json(['message' => 'OTP valid']);
     }
 
-    // Reset password method
     public function resetPassword(Request $request)
     {
         $request->validate([
@@ -228,7 +224,6 @@ class UserController extends Controller
         return response()->json(['message' => 'Password berhasil direset']);
     }
 
-    // Update user method
     public function update(Request $request)
     {
         $request->validate([
@@ -242,6 +237,10 @@ class UserController extends Controller
             'name.required' => 'Nama pengguna tidak boleh kosong.',
             'number.required' => 'Nomor telepon tidak boleh kosong.',
         ]);
+
+        if ($request->user()) {
+            $request->user()->update(['last_active' => now()]);
+        }
 
         try {
             $user = $request->user();
@@ -277,7 +276,7 @@ class UserController extends Controller
             ], 500);
         }
     }
-    // Update profile image method
+
     public function updateProfileImage(Request $request)
     {
         $request->validate([
@@ -289,10 +288,13 @@ class UserController extends Controller
             'profile_image.max' => 'Ukuran gambar tidak boleh lebih dari 5MB.',
         ]);
 
+        if ($request->user()) {
+            $request->user()->update(['last_active' => now()]);
+        }
+
         try {
             $user = $request->user();
 
-            // Upload to Dropbox
             $profileImage = $request->file('profile_image');
             $dropboxUrl = $this->dropboxService->uploadFile($profileImage, '/profile-images');
 
@@ -303,7 +305,6 @@ class UserController extends Controller
                 ], 500);
             }
 
-            // Update user profile image URL
             $user->profile_image = $dropboxUrl;
             $user->save();
 
@@ -323,10 +324,8 @@ class UserController extends Controller
 
     public function getAuthenticatedUserId(Request $request)
     {
-        // Ambil token dari Bearer Authorization header
         $token = $request->bearerToken();
 
-        // Jika tidak ada Bearer Token, coba ambil dari cookie 'auth_token'
         if (!$token) {
             $token = $request->cookie('auth_token');
         }
@@ -335,15 +334,16 @@ class UserController extends Controller
             return response()->json(['message' => 'Token tidak ditemukan'], 401);
         }
 
-        // Temukan token di database dan hubungkan ke user
         $accessToken = \Laravel\Sanctum\PersonalAccessToken::findToken($token);
 
         if (!$accessToken) {
             return response()->json(['message' => 'Token tidak valid'], 401);
         }
 
-        // Ambil user dari token
         $user = $accessToken->tokenable;
+
+        // Update last_active
+        $user->update(['last_active' => now()]);
 
         return response()->json([
             'user_id' => $user->id,
@@ -351,8 +351,7 @@ class UserController extends Controller
         ], 200);
     }
 
-    // app/Http/Controllers/UserController.php
-public function searchUsers(Request $request)
+    public function searchUsers(Request $request)
     {
         try {
             $request->validate([
@@ -362,6 +361,11 @@ public function searchUsers(Request $request)
                 'last_active' => 'nullable|string',
             ]);
 
+            // Update last_active
+            if (auth()->check()) {
+                auth()->user()->update(['last_active' => now()]);
+            }
+
             Log::info('SearchUsers: Request params', $request->all());
 
             $query = User::query()->where('role', 'user');
@@ -369,7 +373,7 @@ public function searchUsers(Request $request)
             if ($request->filled('query')) {
                 $query->where(function ($q) use ($request) {
                     $q->where('name', 'like', '%' . $request->query('query') . '%')
-                      ->orWhere('email', 'like', '%' . $request->query('query') . '%');
+                        ->orWhere('email', 'like', '%' . $request->query('query') . '%');
                 });
             }
 
@@ -410,7 +414,6 @@ public function searchUsers(Request $request)
                 }
             }
 
-            // Exclude current user only if authenticated
             if (auth()->check()) {
                 $query->where('id', '!=', auth()->id());
             } else {
@@ -418,7 +421,7 @@ public function searchUsers(Request $request)
             }
 
             $users = $query->select('id', 'name', 'city', 'profile_image', 'reviews_count', 'last_active')
-                           ->get();
+                ->get();
 
             Log::info('SearchUsers: Response', ['users' => $users->toArray()]);
 
