@@ -18,7 +18,6 @@ Route::prefix('auth')->controller(UserController::class)->group(function () {
     Route::get('/validate-token', 'validateToken')->middleware('auth:sanctum');
     Route::put('/update', 'update')->middleware('auth:sanctum');
     Route::post('/update-profile-image', 'updateProfileImage')->middleware('auth:sanctum');
-    Route::get('/validate-token', 'validateToken')->middleware('auth:sanctum');
     Route::get('/user', [UserController::class, 'getAuthenticatedUserId'])->middleware('auth:sanctum');
 });
 
