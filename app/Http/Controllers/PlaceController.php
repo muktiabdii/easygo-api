@@ -205,11 +205,31 @@ class PlaceController extends Controller
 
     public function pending(Request $request)
     {
-        if (auth()->user()->role !== 'admin') {
-            return response()->json(['error' => 'Unauthorized'], 403);
+        // Check if Sanctum is working at all
+        if (!auth('sanctum')->check()) {
+            \Log::error('Sanctum auth failed');
+            return response()->json(['error' => 'Sanctum authentication failed'], 401);
         }
 
-        auth()->user()->update(['last_active' => now()]);
+        $user = auth('sanctum')->user();
+
+        if (!$user) {
+            \Log::error('No user found via Sanctum');
+            return response()->json(['error' => 'No user found'], 401);
+        }
+
+        \Log::info('User found via Sanctum', [
+            'user_id' => $user->id,
+            'user_role' => $user->role,
+            'user_email' => $user->email
+        ]);
+
+        if ($user->role !== 'admin') {
+            return response()->json(['error' => 'Forbidden - Not admin'], 403);
+        }
+
+        // Update last_active
+        $user->update(['last_active' => now()]);
 
         $places = Place::with(['images', 'facilities', 'ratings'])
             ->get()
