@@ -116,18 +116,16 @@ class UserController extends Controller
             }
 
             $token = $user->createToken('auth_token')->plainTextToken;
-
-            // Updated cookie settings for production
             $cookie = cookie(
                 'auth_token',
                 $token,
                 60 * 24,
-                '/',
                 null,
-                true,                  // secure
-                true,                  // httpOnly
-                false,                 // raw
-                'None'                 // sameSite
+                null,
+                true,
+                true,
+                false,
+                'strict'
             );
 
             return response()->json([
