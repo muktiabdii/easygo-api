@@ -24,6 +24,7 @@ Route::prefix('auth')->controller(UserController::class)->group(function () {
 
 Route::prefix('places')->group(function () {
     Route::get('/', [PlaceController::class, 'index']); 
+    Route::get('/admin', [PlaceController::class, 'pending'])->middleware('auth:sanctum');
     Route::get('/{id}', [PlaceController::class, 'show']); 
     Route::get('/{id}/reviews', [ReviewController::class, 'getPlaceReviews']);
 });
@@ -37,7 +38,6 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('{id}/approve', [PlaceController::class, 'approve']);
         Route::put('{id}/reject', [PlaceController::class, 'reject']);
         Route::delete('{id}', [PlaceController::class, 'destroy']);
-        Route::get('/admin', [PlaceController::class, 'pending']);
     });
 
     // Reviews routes
