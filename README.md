@@ -44,7 +44,7 @@ Access the live API at:
 ## 👀 Demo App
 
 You can see a demo of this application at the link **below**:  
-🔗 [Proyek Akhir - EasyGo: Aplikasi Aksesibilitas Fasilitas Umum untuk Disabilitas | PAWL 2024/2025](https://www.youtube.com/watch?v=ePuniTHnorA)
+🔗 [Final Project Pemrograman Web Lanjut - Blade Blade Club | EasyGo](https://www.youtube.com/watch?v=ePuniTHnorA)
 
 ---
 
