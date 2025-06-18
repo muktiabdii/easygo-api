@@ -33,6 +33,14 @@
 
 ---
 
+## 🌐 Deployment
+
+The backend API has been deployed to **Railway** with a **30-day trial plan**.  
+Access the live API at:  
+🔗 [https://easygo-api.railway.app](https://easygo-api-production-d477.up.railway.app)
+
+---
+
 ## ⚙️ Prerequisites & Dependencies
 
 - **PHP** `>= 8.1`
