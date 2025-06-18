@@ -1,7 +1,102 @@
-Project Strcture
+## EasyGo API 🚀  
 
-```
-📦 
+## ✨ Key Features & Benefits
+
+- 🔐 **User Authentication**  
+  Secure user registration, login, and OTP-based authentication, including support for profile pictures.
+
+- 🏞️ **Place Management**  
+  Add, edit, and manage places with images and associated facilities.
+
+- ⭐ **Rating System**  
+  Users can rate and review places, complete with images.
+
+- 💬 **Chat Rooms**  
+  Real-time chat feature for communication between users or with admins.
+
+- 📡 **API Endpoints**  
+  Well-structured and documented endpoints ready for frontend consumption.
+
+- 🛡️ **Role-Based Access Control**  
+  Supports user roles like admin and regular user for secure access and functionality separation.
+
+- ☁️ **Dropbox Integration**  
+  File storage and retrieval powered by Dropbox API.
+
+---
+
+## ⚙️ Prerequisites & Dependencies
+
+Make sure you have the following installed:
+
+- **PHP** `>= 8.1`
+- **Composer** — [Download Composer](https://getcomposer.org/)
+- **MySQL** (or other compatible database)
+- **Git**
+
+---
+
+## 🚀 Installation & Setup Instructions
+
+1. **Clone the repository:**
+
+   ```bash
+   git clone git@github.com:dzikrimr/easygo-api.git
+   cd easygo-api
+   ```
+
+2. **Install PHP dependencies:**
+
+    ```bash
+   composer install
+   ```
+
+3. **Set up the environment file:**
+
+    ```bash
+   cp .env.example .env
+   ```
+
+4. **Generate app key:**
+
+    ```bash
+   php artisan key:generate
+   ```
+
+5. **Run migrations:**
+
+    ```bash
+   php artisan migrate
+   ```
+
+6. **(Optional) Seed the database:**
+
+    ```bash
+   php artisan db:seed
+   ```
+
+7. **Start local development server:**
+
+    ```bash
+   php artisan serve
+   ```
+
+
+## 📚 API Documentation
+📖 Documentation is in progress and will be updated soon.
+
+
+## 👨‍💻 Developer 
+
+- [@Ade](https://www.linkedin.com/in/adenugroho/) — Frontend
+- [@Gilang](https://www.linkedin.com/in/gilang-hafizh/) — Frontend
+- [@Dzikri](https://www.linkedin.com/in/dzikri-murtadlo/) — Fullstack
+- [@Abdi](https://www.linkedin.com/in/muktiabdii/) — Backend
+
+
+## 📦Project Strcture
+
+``` 
 ├─ .editorconfig
 ├─ .env.example
 ├─ .gitattributes
