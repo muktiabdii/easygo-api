@@ -1,37 +1,46 @@
-## EasyGo API 🚀  
+
+![EasyGo API](./assets/cover-easygo-api.png)
+
+<h2 align="center">
+  <b>EasyGo API 🚀 - Backend for EasyGo Web</b>
+</h2>
+
+<p align="center">
+  A secure Laravel-based backend powering EasyGo — provides RESTful API for user auth, places, ratings, chat, and admin panel integration.
+</p>
+
+---
 
 ## ✨ Key Features & Benefits
 
 - 🔐 **User Authentication**  
-  Secure user registration, login, and OTP-based authentication, including support for profile pictures.
+  Secure registration, login, OTP, and profile management.
 
 - 🏞️ **Place Management**  
-  Add, edit, and manage places with images and associated facilities.
+  Add/edit places with facilities and images.
 
 - ⭐ **Rating System**  
-  Users can rate and review places, complete with images.
+  Leave reviews and ratings with image support.
 
 - 💬 **Chat Rooms**  
-  Real-time chat feature for communication between users or with admins.
-
-- 📡 **API Endpoints**  
-  Well-structured and documented endpoints ready for frontend consumption.
+  Real-time chat system.
 
 - 🛡️ **Role-Based Access Control**  
-  Supports user roles like admin and regular user for secure access and functionality separation.
+  Admin and user separation.
 
 - ☁️ **Dropbox Integration**  
-  File storage and retrieval powered by Dropbox API.
+  Store image uploads via Dropbox API.
+
+- ⚙️ **API Consumption Ready**  
+  Fully integrated with [EasyGo Frontend](https://github.com/yourusername/easygo-web).
 
 ---
 
 ## ⚙️ Prerequisites & Dependencies
 
-Make sure you have the following installed:
-
 - **PHP** `>= 8.1`
-- **Composer** — [Download Composer](https://getcomposer.org/)
-- **MySQL** (or other compatible database)
+- **Composer**
+- **MySQL**
 - **Git**
 
 ---
@@ -45,53 +54,70 @@ Make sure you have the following installed:
    cd easygo-api
    ```
 
-2. **Install PHP dependencies:**
+2. **Install dependencies:**
 
-    ```bash
+   ```bash
    composer install
    ```
 
-3. **Set up the environment file:**
+3. **Set up environment:**
 
-    ```bash
+   ```bash
    cp .env.example .env
-   ```
-
-4. **Generate app key:**
-
-    ```bash
    php artisan key:generate
    ```
 
-5. **Run migrations:**
+   Configure `.env`:
+   - `DB_*`, `DROPBOX_*`, `APP_URL`, etc.
 
-    ```bash
+4. **Run migrations:**
+
+   ```bash
    php artisan migrate
    ```
 
-6. **(Optional) Seed the database:**
+5. **(Optional) Seed data:**
 
-    ```bash
+   ```bash
    php artisan db:seed
    ```
 
-7. **Start local development server:**
+6. **Start server:**
 
-    ```bash
+   ```bash
    php artisan serve
    ```
 
+   Accessible at: `http://localhost:8000`
+
+---
 
 ## 📚 API Documentation
-📖 Documentation is in progress and will be updated soon.
 
+API docs in progress.  
+Refer to routes in `routes/api.php` and controller logic in `app/Http/Controllers/`.
 
-## 👨‍💻 Developer 
+---
+
+## 🔗 Integration
+
+This API powers the [EasyGo Web Frontend](https://github.com/muktiabdii/easygo-web), providing all necessary data and actions for:
+
+- Auth
+- Place discovery
+- Ratings
+- Chat
+- Admin dashboard
+
+---
+
+## 👨‍💻 Developer Team
 
 - [@Ade](https://www.linkedin.com/in/adenugroho/) — Frontend
 - [@Gilang](https://www.linkedin.com/in/gilang-hafizh/) — Frontend
 - [@Dzikri](https://www.linkedin.com/in/dzikri-murtadlo/) — Fullstack
 - [@Abdi](https://www.linkedin.com/in/muktiabdii/) — Backend
+
 
 
 ## 📦Project Strcture
