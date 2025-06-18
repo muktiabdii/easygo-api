@@ -1,6 +1,3 @@
-
-![EasyGo API](./assets/cover-easygo-api.png)
-
 <h2 align="center">
   <b>EasyGo API 🚀 - Backend for EasyGo Web</b>
 </h2>
@@ -32,7 +29,7 @@
   Store image uploads via Dropbox API.
 
 - ⚙️ **API Consumption Ready**  
-  Fully integrated with [EasyGo Frontend](https://github.com/yourusername/easygo-web).
+  Fully integrated with [EasyGo Frontend](https://github.com/muktiabdii/easygo-web).
 
 ---
 
@@ -50,7 +47,7 @@
 1. **Clone the repository:**
 
    ```bash
-   git clone git@github.com:dzikrimr/easygo-api.git
+   git clone git@github.com:muktiabdii/easygo-api.git
    cd easygo-api
    ```
 
