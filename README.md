@@ -35,7 +35,7 @@
 
 ## 🌐 Deployment
 
-The backend API has been deployed to **Railway** with a **30-day trial plan**.  
+The backend API has been deployed to **Railway** with a **30-day trial plan until 8 July 2025**.  
 Access the live API at:  
 🔗 [https://easygo-api.railway.app](https://easygo-api-production-d477.up.railway.app)
 
