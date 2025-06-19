@@ -88,7 +88,7 @@ You can see a demo of this application at the link **below**:
    php artisan migrate
    ```
 
-5. **(Optional) Seed data:**
+5. **Seed data:**
 
    ```bash
    php artisan db:seed
